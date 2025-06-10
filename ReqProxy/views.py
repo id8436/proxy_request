@@ -51,9 +51,8 @@ def proxy_request(request):
                             status=response.status_code,
                             headers=response.headers)
 
+
     except requests.exceptions.RequestException as e:
-        # 6.1. HTTP 에러 응답
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': f"프록시에서 외부 요청 실패. {e}"}, status=500)
     except Exception as e:
-        # 6.2. 기타 에러 응답
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': f"프록시에서 기타 예외 발생. {e}"}, status=500)
