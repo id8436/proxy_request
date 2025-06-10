@@ -26,7 +26,7 @@ def proxy_request(request):
     try:
         # 4.1. 요청 파라미터 준비
         params = payload.get('params', {})
-        # 헤더 정리. Requests가 data나 json 파라미터를 보고 Content-Type을 자동으로 설정하게 함
+        # 헤더 정리. Requests가 data나 json 파라미터를 보고 Content-Type을 자동으로 설정해서 충돌함;
         headers = payload.get('headers', {})  # 클라이언트가 보낸 헤더
         headers_to_send = headers.copy()
         keys_to_remove = []
