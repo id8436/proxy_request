@@ -27,7 +27,7 @@ def test_example_connection_verbose(request):
         # 2. 성공하면 응답 상태 코드와 성공 메시지 반환 (JSON 형태로)
         return JsonResponse(
             {
-                'status': '성공',
+                'status': '성공 2025.6.10 버전',
                 'test_url': test_url,
                 'status_code': response.status_code,
                 'message': '프록시 서버에서 example.com에 성공적으로 접근했습니다.'
