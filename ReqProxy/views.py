@@ -57,10 +57,13 @@ def proxy_request(request):
         #   - 대용량 파일 전송에 적합
         #   - Transfer-Encoding: chunked 방식으로 응답
         streaming_content = response.iter_content(chunk_size=8192) # 8KB씩 읽기
+        # Content-Type 중복 제거
+        response_headers = dict(response.headers)
+        content_type = response_headers.pop('Content-Type', None)
         return HttpResponse(streaming_content,
-                            content_type=response.headers['Content-Type'],
+                            content_type=content_type,
                             status=response.status_code,
-                            headers=response.headers)
+                            headers=response_headers)
 
 
     except requests.exceptions.RequestException as e:
