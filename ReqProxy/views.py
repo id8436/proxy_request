@@ -27,16 +27,14 @@ def proxy_request(request):
         # 4.1. 요청 파라미터 준비
         params = payload.get('params', {})
         # 헤더 정리. Requests가 data나 json 파라미터를 보고 Content-Type을 자동으로 설정해서 충돌함;
-        headers = payload.get('headers', {})  # 클라이언트가 보낸 헤더
+        # 헤더 정리
+        headers = payload.get('headers', {})
         headers_to_send = headers.copy()
-        keys_to_remove = []
-        for key in headers_to_send.keys():
-            if key.lower() == 'content-type':
-                keys_to_remove.append(key)  # 지울 키를 리스트에 담아둠 (순회 중 삭제 방지)
-
-        for key in keys_to_remove:
-            del headers_to_send[key]  # 모아둔 키들을 한꺼번에 삭제
-
+        for key in list(headers_to_send.keys()):
+            if key.lower() in ('content-type', 'accept-encoding'):
+                del headers_to_send[key]
+        # 압축 요청 방지
+        headers_to_send['Accept-Encoding'] = 'identity'
 
         data = payload.get('data')
         json_data = payload.get('json')
