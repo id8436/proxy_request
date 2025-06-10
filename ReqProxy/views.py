@@ -44,7 +44,7 @@ def proxy_request(request):
             method,
             target_url,
             params=params,
-            headers=headers,
+            headers=headers_to_send,
             data=data,  # form-data
             json=json_data,  # json data
             stream=False
