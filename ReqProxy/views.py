@@ -49,7 +49,7 @@ def proxy_request(request):
             headers=headers,
             data=data,  # form-data
             json=json_data,  # json data
-            stream=True # 응답 내용을 스트리밍 방식으로 처리
+            stream=False
         )
         response.raise_for_status()  # HTTP 에러 발생 시 예외 발생
 
