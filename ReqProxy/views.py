@@ -56,11 +56,11 @@ def proxy_request(request):
         # 5. 응답 스트리밍
         #   - 대용량 파일 전송에 적합
         #   - Transfer-Encoding: chunked 방식으로 응답
-        streaming_content = response.iter_content(chunk_size=8192) # 8KB씩 읽기
+        content = response.content  # gzip 압축 이미 해제된 바이너리. 압축된 상태에선 이상하게 전달이 안된다;;
         # Content-Type 중복 제거
         response_headers = dict(response.headers)
         content_type = response_headers.pop('Content-Type', None)
-        return HttpResponse(streaming_content,
+        return HttpResponse(content,
                             content_type=content_type,
                             status=response.status_code,
                             headers=response_headers)
