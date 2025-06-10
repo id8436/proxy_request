@@ -26,17 +26,20 @@ def proxy_request(request):
     try:
         # 4.1. 요청 파라미터 준비
         params = payload.get('params', {})
-        headers = payload.get('headers', {})
+        # 헤더 정리. Requests가 data나 json 파라미터를 보고 Content-Type을 자동으로 설정하게 함
+        headers = payload.get('headers', {})  # 클라이언트가 보낸 헤더
+        headers_to_send = headers.copy()
+        keys_to_remove = []
+        for key in headers_to_send.keys():
+            if key.lower() == 'content-type':
+                keys_to_remove.append(key)  # 지울 키를 리스트에 담아둠 (순회 중 삭제 방지)
+
+        for key in keys_to_remove:
+            del headers_to_send[key]  # 모아둔 키들을 한꺼번에 삭제
+
+
         data = payload.get('data')
         json_data = payload.get('json')
-        # 클라이언트가 보낸 헤더에 'Content-Type'이 있다면 제거 requests에선 자동으로 Content-Type: 을 지정해주는데, 이게 서버에서 오면 충돌되어 에러를 냄.
-        # Requests가 data나 json 파라미터를 보고 Content-Type을 자동으로 설정하게 함
-        if 'Content-Type' in headers:
-            del headers['Content-Type']
-        # 대소문자 구분 없이 처리하려면 좀 더 복잡한 로직 필요 (insensitive dict 사용 등)
-        # 간단하게 하려면 'content-type' (소문자)도 같이 체크해서 제거할 수 있음
-        if 'content-type' in headers:
-             del headers['content-type']
 
         # 4.2. 요청
         response = requests.request(
