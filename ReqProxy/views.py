@@ -56,3 +56,4 @@ def proxy_request(request):
         return JsonResponse({'error': f"프록시에서 외부 요청 실패. {e}"}, status=500)
     except Exception as e:
         return JsonResponse({'error': f"프록시에서 기타 예외 발생. {e}"}, status=500)
+
