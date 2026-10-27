@@ -1,6 +1,6 @@
 import requests
 import json
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt # CSRF 보호 비활성화 (개발/테스트용)
 
 @csrf_exempt # CSRF 보호 비활성화 (개발/테스트용)
@@ -22,50 +22,71 @@ def proxy_request(request):
     if not target_url:
         return JsonResponse({'error': 'target_url is required'}, status=400)
 
-    # 4. 외부 API 요청
+    # 4. 외부 API 요청 준비
     try:
-        # 4.1. 요청 파라미터 준비
         params = payload.get('params', {})
-        # 헤더 정리. Requests가 data나 json 파라미터를 보고 Content-Type을 자동으로 설정해서 충돌함;
-        # 헤더 정리
         headers = payload.get('headers', {})
+        
+        # 헤더 정리: 프록시 전달 시 충돌을 일으킬 수 있는 헤더 제거
         headers_to_send = headers.copy()
         for key in list(headers_to_send.keys()):
-            if key.lower() in ('content-type', 'accept-encoding'):
+            if key.lower() in ('content-type', 'accept-encoding', 'transfer-encoding', 'content-length'):
                 del headers_to_send[key]
-        # 압축 요청 방지
+        
+        # 압축 요청 방지 (프록시에서 압축된 데이터를 처리하기 어렵기 때문)
         headers_to_send['Accept-Encoding'] = 'identity'
 
         data = payload.get('data')
         json_data = payload.get('json')
+        cookies = payload.get('cookies', {})
+        timeout = payload.get('timeout', None)
+        auth = payload.get('auth')
+        
+        # auth가 리스트로 들어올 경우 튜플로 변환 (requests.request 요구사항)
+        if auth and isinstance(auth, list):
+            auth = tuple(auth)
 
-        # 4.2. 요청
+        # 5. 외부 API 요청 실행
+        # stream=True를 사용하여 대용량 응답도 효율적으로 처리할 수 있도록 함
         response = requests.request(
             method,
             target_url,
             params=params,
             headers=headers_to_send,
-            data=data,  # form-data
-            json=json_data,  # json data
-            stream=False
+            data=data,
+            json=json_data,
+            cookies=cookies,
+            auth=auth,
+            timeout=timeout,
+            stream=True
         )
-        response.raise_for_status()  # HTTP 에러 발생 시 예외 발생
 
-        # 5. 응답 스트리밍
-        #   - 대용량 파일 전송에 적합
-        #   - Transfer-Encoding: chunked 방식으로 응답
-        content = response.content  # gzip 압축 이미 해제된 바이너리. 압축된 상태에선 이상하게 전달이 안된다;;
-        # Content-Type 중복 제거
+        # 6. 응답 처리
+        # 응답 헤더 정리: 프록시 응답 시 충돌을 일으킬 수 있는 헤더 제거
         response_headers = dict(response.headers)
-        content_type = response_headers.pop('Content-Type', None)
-        return HttpResponse(content,
-                            content_type=content_type,
-                            status=response.status_code,
-                            headers=response_headers)
+        for key in list(response_headers.keys()):
+            if key.lower() in ('content-encoding', 'transfer-encoding', 'content-length'):
+                del response_headers[key]
 
+        # StreamingHttpResponse를 사용하여 응답 데이터를 스트리밍 방식으로 전달
+        def generate_content():
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    yield chunk
 
+        return StreamingHttpResponse(
+            generate_content(),
+            content_type=response_headers.get('Content-Type', 'application/octet-stream'),
+            status=response.status_code,
+            headers=response_headers
+        )
+
+    except requests.exceptions.Timeout:
+        return JsonResponse({'error': '프록시 요청 시간 초: Timeout'}, status=408)
+    except requests.exceptions.ConnectionError:
+        return JsonResponse({'error': '프록시 연결 오류: Connection Error'}, status=502)
     except requests.exceptions.RequestException as e:
-        return JsonResponse({'error': f"프록시에서 외부 요청 실패. {e}"}, status=500)
+        return JsonResponse({'error': f"프록시에서 외부 요청 실패: {e}"}, status=502)
     except Exception as e:
-        return JsonResponse({'error': f"프록시에서 기타 예외 발생. {e}"}, status=500)
+        return JsonResponse({'error': f"프록시에서 기타 예외 발생: {e}"}, status=500)
 
