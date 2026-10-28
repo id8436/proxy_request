@@ -111,5 +111,8 @@ def proxy_request(request):
         return JsonResponse({'error': 'Proxy request timed out'}, status=408)
     except requests.exceptions.RequestException as exc:
         return JsonResponse({'error': f'Upstream request failed: {exc}'}, status=502)
-    except (TypeError, ValueError):
-        return JsonResponse({'error': 'Invalid request options'}, status=400)
+    except (TypeError, ValueError) as exc:
+        error = {'error': 'Invalid request options'}
+        if settings.DEBUG:
+            error['detail'] = str(exc)
+        return JsonResponse(error, status=400)

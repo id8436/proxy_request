@@ -4,19 +4,20 @@ Set PROXY_SERVER to the full proxy endpoint, for example:
 https://proxy.example/requests/proxy_request/
 """
 
-import os
+
 
 import requests
 from requests import exceptions
 
 __all__ = ['exceptions', 'request', 'get', 'post', 'put', 'patch', 'delete', 'head', 'options']
 
-
-proxy_url = os.environ.get('PROXY_SERVER')
+# 프록시에서 url만 정확하게 지정한다. https://proxy.example/requests/proxy_request/ 형태로.
+# import os
+# proxy_url = os.environ.get('PROXY_SERVER')
+proxy_url = 'http://100.74.225.97:8000/requests/proxy_request/'
 _SUPPORTED_OPTIONS = {
     'params', 'headers', 'data', 'json', 'cookies', 'auth', 'timeout',
 }
-
 
 def request(method, url, **kwargs):
     if not proxy_url:
@@ -73,3 +74,49 @@ def options(url, **kwargs):
     return request('OPTIONS', url, **kwargs)
 
 
+
+def _run_diagnostics():
+    """프록시 연결과 GET/JSON/form 요청 전달을 점검한다."""
+    tests = [
+        (
+            'GET + params',
+            lambda: get(
+                'https://httpbin.org/get',
+                params={'check': 'proxy'},
+                headers={'Accept': 'application/json'},
+            ),
+        ),
+        (
+            'POST + JSON',
+            lambda: post(
+                'https://httpbin.org/post',
+                json={'check': 'proxy', 'value': 123},
+            ),
+        ),
+        (
+            'POST + form data',
+            lambda: post(
+                'https://httpbin.org/post',
+                data={'check': 'proxy', 'value': 'form'},
+            ),
+        ),
+    ]
+
+    for label, send_request in tests:
+        print(f'=== {label} ===')
+        try:
+            response = send_request()
+            print(f'HTTP {response.status_code}')
+            response.raise_for_status()
+            try:
+                print(response.json())
+            except ValueError:
+                print(response.text)
+        except exceptions.RequestException as error:
+            print(f'Request failed: {error}')
+            if error.response is not None:
+                print(f'Proxy response: {error.response.text}')
+
+
+if __name__ == '__main__':
+    _run_diagnostics()
