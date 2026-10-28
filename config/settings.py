@@ -125,4 +125,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Proxy Settings
 # Add the IP address of your "other server" (the one that will call this proxy) to this list.
 # If you want to allow all IPs (not recommended for production), use ['*']
-ALLOWED_PROXY_CLIENT_IPS = ['*']  # 요청 허용할 아이피 목록.
+ALLOWED_PROXY_CLIENT_IPS = ['*']  # Any client IP can call this proxy.
+ALLOWED_PROXY_TARGET_HOSTS = ['*']  # 목표 ip.(ex 빗썸)
