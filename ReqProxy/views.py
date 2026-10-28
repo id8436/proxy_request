@@ -94,6 +94,7 @@ def proxy_request(request):
             key: value for key, value in response.headers.items()
             if key.lower() not in excluded_headers
         }
+        response_headers.setdefault('Content-Type', 'application/octet-stream')
 
         def generate_content():
             try:
@@ -103,7 +104,6 @@ def proxy_request(request):
 
         return StreamingHttpResponse(
             generate_content(),
-            content_type=response_headers.get('Content-Type', 'application/octet-stream'),
             status=response.status_code,
             headers=response_headers,
         )
