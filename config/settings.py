@@ -121,3 +121,8 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Proxy Settings
+# Add the IP address of your "other server" (the one that will call this proxy) to this list.
+# If you want to allow all IPs (not recommended for production), use ['*']
+ALLOWED_PROXY_CLIENT_IPS = ['*']  # 요청 허용할 아이피 목록.

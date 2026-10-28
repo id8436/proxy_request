@@ -2,6 +2,8 @@ import requests
 import json
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt # CSRF 보호 비활성화 (개발/테스트용)
+from django.conf import settings
+import ipaddress
 
 @csrf_exempt # CSRF 보호 비활성화 (개발/테스트용)
 def proxy_request(request):
@@ -9,18 +11,46 @@ def proxy_request(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
 
-    # 2. 요청 페이로드 파싱
+    # 2. 클라이언트 IP 검증 (Whitelist)
+    # 클라이언트 IP 가져오기 (X-Forwarded-For 헤더 고려)
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        client_ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        client_ip = request.META.get('REMOTE_ADDR')
+
+    allowed_ips = getattr(settings, 'ALLOWED_PROXY_CLIENT_IPS', ['*'])
+
+    if '*' not in allowed_ips:
+        is_allowed = False
+        try:
+            client_ip_obj = ipaddress.ip_address(client_ip)
+            for allowed_ip in allowed_ips:
+                if '*' in allowed_ip:
+                    # CIDR notation 지원 (예: 192.168.1.0/24)
+                    if '/' in allowed_ip:
+                        network = ipaddress.ip_network(allowed_ip)
+                        if client_ip_obj in network:
+                            is_allowed = True
+                            break
+                    elif client_ip == allowed_ip:
+                        is_allowed = True
+                        break
+                else:
+                    if client_ip == allowed_ip:
+                        is_allowed = True
+                        break
+        except ValueError:
+            is_allowed = False
+
+        if not is_allowed:
+            return JsonResponse({'error': f'Access denied from IP: {client_ip}'}, status=403)
+
+    # 3. 요청 페이로드 파싱
     try:
         payload = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON format'}, status=400)
-
-    # 3. 필수 파라미터 검증
-    target_url = payload.get('target_url')
-    method = payload.get('method', 'GET').upper()  # 기본값은 GET
-
-    if not target_url:
-        return JsonResponse({'error': 'target_url is required'}, status=400)
 
     # 4. 외부 API 요청 준비
     try:
@@ -86,7 +116,6 @@ def proxy_request(request):
     except requests.exceptions.ConnectionError:
         return JsonResponse({'error': '프록시 연결 오류: Connection Error'}, status=502)
     except requests.exceptions.RequestException as e:
-        return JsonResponse({'error': f"프록시에서 외부 요청 실패: {e}"}, status=502)
+        return JsonResponse({'error': f"프록���에서 외부 요청 실패: {e}"}, status=502)
     except Exception as e:
         return JsonResponse({'error': f"프록시에서 기타 예외 발생: {e}"}, status=500)
-
