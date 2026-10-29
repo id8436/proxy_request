@@ -10,9 +10,10 @@ from django.views.decorators.csrf import csrf_exempt
 
 @csrf_exempt
 def proxy_request(request):
-    # The client always sends a POST envelope; payload['method'] is the upstream method.
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Proxy requests must use POST'}, status=405)
+    # Accept both POST and GET. If GET, we will treat it as a normal request
+    # and forward the method specified in the payload (or GET if no payload).
+    if request.method not in ('POST', 'GET'):
+        return JsonResponse({'error': 'Proxy requests must use POST or GET'}, status=405)
 
     target_url = None
     method = 'GET'
