@@ -3,18 +3,18 @@
 Set PROXY_SERVER to the full proxy endpoint, for example:
 https://proxy.example/requests/proxy_request/
 """
-
-
-
-import requests
-from requests import exceptions
-
-__all__ = ['exceptions', 'request', 'get', 'post', 'put', 'patch', 'delete', 'head', 'options']
-
 # 프록시에서 url만 정확하게 지정한다. https://proxy.example/requests/proxy_request/ 형태로.
 # import os
 # proxy_url = os.environ.get('PROXY_SERVER')
 proxy_url = 'http://100.74.225.97:8000/requests/proxy_request/'
+
+
+import requests as _real_requests
+from requests import exceptions
+
+__all__ = ['exceptions', 'request', 'get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'requests']
+
+
 _SUPPORTED_OPTIONS = {
     'params', 'headers', 'data', 'json', 'cookies', 'auth', 'timeout',
 }
@@ -38,7 +38,7 @@ def request(method, url, **kwargs):
         **kwargs,
     }
     # Allow time for the upstream request plus the proxy-to-client round trip.
-    response = requests.post(
+    response = _real_requests.post(
         proxy_url,
         json=payload,
         timeout=max(float(upstream_timeout), 1) + 10,
@@ -120,3 +120,17 @@ def _run_diagnostics():
 
 if __name__ == '__main__':
     _run_diagnostics()
+
+
+class _ProxyRequests:
+    """A thin wrapper that forwards HTTP method calls to the proxy.
+    
+    This allows 'from proxy_requests import requests' to work as a drop-in replacement.
+    """
+    def __getattr__(self, name):
+        if name in ('get', 'post', 'put', 'patch', 'delete', 'head', 'options'):
+            return lambda url, **kwargs: request(name.upper(), url, **kwargs)
+        return getattr(_real_requests, name)
+
+# Expose the wrapper as ``requests`` for convenient import
+requests = _ProxyRequests()
