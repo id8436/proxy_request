@@ -7,7 +7,7 @@ https://proxy.example/requests/proxy_request/
 # import os
 # proxy_url = os.environ.get('PROXY_SERVER')
 proxy_url = 'http://100.74.225.97:8000/requests/proxy_request/'
-
+# 사용처에선 import proxy_requests as requests 형식으로 임포트 해서 사용한다.
 
 import requests as _real_requests
 from requests import exceptions
@@ -120,6 +120,17 @@ def _run_diagnostics():
 
 if __name__ == '__main__':
     _run_diagnostics()
+    # Simple demo: perform a GET request via the proxy wrapper
+    # This will internally send a POST to the proxy server.
+
+    # 사용처에선 다음과 같은 방식으로.
+    import proxy_requests as requests
+    try:
+        response = requests.get('https://httpbin.org/get', params={'demo': 'proxy'})
+        print(f'HTTP {response.status_code}')
+        print('Response JSON:', response.json())
+    except Exception as e:
+        print('Error during demo request:', e)
 
 
 class _ProxyRequests:
